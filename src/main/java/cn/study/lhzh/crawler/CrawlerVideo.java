@@ -1,16 +1,20 @@
 package cn.study.lhzh.crawler;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.SequenceInputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLDecoder;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -52,8 +56,8 @@ import cn.study.lhzh.http.HttpRequest;
  *
  */
 public class CrawlerVideo {
-	
-    private static String baseFileFolder="static/file/";
+
+	private static String baseFileFolder = "static/file/";
 
 	static int i;
 	// 单个字符的正则表达式
@@ -62,30 +66,31 @@ public class CrawlerVideo {
 	private static final String pattern = singlePattern + singlePattern + singlePattern + singlePattern;
 
 	public static void main(String[] args) throws Exception {
-//		String allUrl="http://jdvodrvfb210d.vod.126.net/jdvodrvfb210d/nos/hls/2019/12/10/1215480494_3fd7d1e4de8248ab99a80fd56fff24e2_sd28.ts";
-//		HttpRequest.downLoad(allUrl);
-//		if(false) {
+		// String
+		// allUrl="http://jdvodrvfb210d.vod.126.net/jdvodrvfb210d/nos/hls/2019/12/10/1215480494_3fd7d1e4de8248ab99a80fd56fff24e2_sd28.ts";
+		// HttpRequest.downLoad(allUrl);
+		// if(false) {
 		CrawlerVideo cl = new CrawlerVideo();
 		// 获取课程ID
-		String url = "https://www.icourse163.org/course/PKU-1206015802";
+		String url = "https://www.icourse163.org/course/PKU-1207130813";
 		String html = cl.GetHTML(url);
 		System.out.println(html);
-		//获取课程名称
-		String courseName=getCourseNameByHtml(html);
-		//新建一个文件夹
-        String filePath = System.getProperty("user.dir");
-        File path = new File(filePath);
-        File baseDirectory = new File(path, baseFileFolder);
-        File toDirectory = new File(baseDirectory, courseName);
-        boolean existDircetory = false;
-        if (toDirectory.exists()) {
-            existDircetory = true;
-        } else {
-            existDircetory = toDirectory.mkdirs();
-        }
-        System.out.println(toDirectory.getAbsolutePath());
-        System.out.println(toDirectory.exists());
-		//获取课程的信息；可能有多个但是他们的termId是一样的
+		// 获取课程名称
+		String courseName = getCourseNameByHtml(html);
+		// 新建一个文件夹
+		String filePath = System.getProperty("user.dir");
+		File path = new File(filePath);
+		File baseDirectory = new File(path, baseFileFolder);
+		File toDirectory = new File(baseDirectory, courseName);
+		boolean existDircetory = false;
+		if (toDirectory.exists()) {
+			existDircetory = true;
+		} else {
+			existDircetory = toDirectory.mkdirs();
+		}
+		System.out.println(toDirectory.getAbsolutePath());
+		System.out.println(toDirectory.exists());
+		// 获取课程的信息；可能有多个但是他们的termId是一样的
 		List<Term> termList = getTermByHtml(html);
 		// 根据tid获取每一集的id
 		List<Unit> bizList = new ArrayList<>();
@@ -108,83 +113,143 @@ public class CrawlerVideo {
 				System.out.println(parseResult.get("name"));
 				String videoName = parseResult.get("name").toString();
 				List<Video> parseArray = JSON.parseArray(videos.toString(), Video.class);
+				boolean flag = false;
 				for (Video video : parseArray) {
-					String baseUrl=video.getVideoUrl().substring(0, video.getVideoUrl().lastIndexOf("/"));
-					 System.out.println(video.getVideoUrl());
-					 List<String> tsList=new ArrayList<>();
-					if (video.getQuality() == 1) {
-						System.out.println("-----------------------------------------------------------------------------");
+					String baseUrl = video.getVideoUrl().substring(0, video.getVideoUrl().lastIndexOf("/"));
+					System.out.println(video.getVideoUrl());
+					List<String> tsList = new ArrayList<>();
+					if (!flag && video.getQuality() == 1) {
+						flag = true;
+						System.out.println(
+								"-----------------------------------------------------------------------------");
 						String sendGet = HttpRequest.sendGet(video.getVideoUrl(), "");
-//						System.out.println(sendGet);
+						// System.out.println(sendGet);
 						System.out.println(baseUrl);
-						tsList=getTsList(sendGet);
+						tsList = getTsList(sendGet);
+					} else if (!flag && video.getQuality() == 2) {
+						flag = true;
+						System.out.println(
+								"-----------------------------------------------------------------------------");
+						String sendGet2 = HttpRequest.sendGet(video.getVideoUrl(), "");
+						// System.out.println(sendGet);
+						System.out.println(baseUrl);
+						tsList = getTsList(sendGet2);
+
+					} else if (!flag && video.getQuality() == 3) {
+						flag = true;
+						System.out.println(
+								"-----------------------------------------------------------------------------");
+						String sendGet3 = HttpRequest.sendGet(video.getVideoUrl(), "");
+						// System.out.println(sendGet);
+						System.out.println(baseUrl);
+						tsList = getTsList(sendGet3);
+
+					} else if (!flag && video.getQuality() == 4) {
+						flag = true;
+						System.out.println(
+								"-----------------------------------------------------------------------------");
+						String sendGet4 = HttpRequest.sendGet(video.getVideoUrl(), "");
+						// System.out.println(sendGet);
+						System.out.println(baseUrl);
+						tsList = getTsList(sendGet4);
 					}
-					//去下载ts文件
-					toDownLoadTs(baseUrl,tsList,toDirectory,videoName);
+					// 去下载ts文件
+					toDownLoadTs(baseUrl, tsList, toDirectory, videoName);
 				}
 
-
 			}
-//		}
-		// }
+			// }
+			// }
+		}
 	}
+
+	private static void toDownLoadTs(String baseUrl, List<String> tsList, File toDirectory, String videoName) {
+		// File file=new File(toDirectory,videoName);
+		for (String tsStr : tsList) {
+			String allUrl = baseUrl + "/" + tsStr;
+			File tsFile = new File(toDirectory, tsStr);
+			HttpRequest.downLoad(allUrl, tsFile);
+		}
 	}
-    
-    private static void toDownLoadTs(String baseUrl, List<String> tsList, File toDirectory, String videoName) {
-//    	File file=new  File(toDirectory,videoName);
-    	for (String tsStr : tsList) {
-    		String allUrl=baseUrl+"/"+tsStr;
-    		File tsFile=new  File(toDirectory,tsStr);
-    		HttpRequest.downLoad(allUrl,tsFile);
-		}		
+
+	private static void toDownLoadTsAll(String baseUrl, List<String> tsList, File toDirectory, String videoName) {
+		File file = new File(toDirectory, videoName);
+
+		List<BufferedInputStream> array = new ArrayList<BufferedInputStream>();
+		for (String tsStr : tsList) {
+			String allUrl = baseUrl + "/" + tsStr;
+			File tsFile = new File(toDirectory, tsStr);
+			BufferedInputStream bufferedInputStream = HttpRequest.getBufferedInputStream(allUrl);
+			// HttpRequest.downLoad(allUrl, tsFile);
+			array.add(bufferedInputStream);
+		}
+		Enumeration<BufferedInputStream> en = Collections.enumeration(array); // 枚举
+		SequenceInputStream sis = new SequenceInputStream(en);
+		toCreateMp4(sis, file);
+
+	}
+
+	private static void toCreateMp4(SequenceInputStream sis, File file) {
+		try {
+			FileOutputStream fos = new FileOutputStream(file);// 指定目录创建合并的文件
+			int num;
+			byte[] bytes1 = new byte[1024];
+
+			while ((num = sis.read(bytes1)) != -1) {
+				fos.write(bytes1, 0, num);
+				fos.flush();
+			}
+			fos.close();
+			sis.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	/**
-     * 从html源码(字符串)中去掉标题
-     * @param htmlSource
-     * @return
-     */
-    public static String getCourseNameByHtml(String htmlSource){
-        List<String> list = new ArrayList<String>();
-        String title = "";
-        
-        //Pattern pa = Pattern.compile("<title>.*?</title>", Pattern.CANON_EQ);也可以
-        Pattern pa = Pattern.compile("<title>.*?</title>");//源码中标题正则表达式
-        Matcher ma = pa.matcher(htmlSource);
-        while (ma.find())//寻找符合el的字串
-        {
-            list.add(ma.group());//将符合el的字串加入到list中
-        }
-        for (int i = 0; i < list.size(); i++)
-        {
-            title = title + list.get(i);
-        }
-        return outTag(title);
-    }
-    
-    /**
-     * 去掉html源码中的标签
-     * @param s
-     * @return
-     */
-    public static String outTag(String s)
-    {
-        return s.replaceAll("<.*?>", "");
-    }
-   
-	
-	
+	 * 从html源码(字符串)中去掉标题
+	 * 
+	 * @param htmlSource
+	 * @return
+	 */
+	public static String getCourseNameByHtml(String htmlSource) {
+		List<String> list = new ArrayList<String>();
+		String title = "";
+
+		// Pattern pa = Pattern.compile("<title>.*?</title>", Pattern.CANON_EQ);也可以
+		Pattern pa = Pattern.compile("<title>.*?</title>");// 源码中标题正则表达式
+		Matcher ma = pa.matcher(htmlSource);
+		while (ma.find())// 寻找符合el的字串
+		{
+			list.add(ma.group());// 将符合el的字串加入到list中
+		}
+		for (int i = 0; i < list.size(); i++) {
+			title = title + list.get(i);
+		}
+		return outTag(title);
+	}
+
+	/**
+	 * 去掉html源码中的标签
+	 * 
+	 * @param s
+	 * @return
+	 */
+	public static String outTag(String s) {
+		return s.replaceAll("<.*?>", "");
+	}
 
 	private static List<String> getTsList(String sendGet) {
 		String reg = ",[^`]*?\\.ts";
-		List<String>tsList=new ArrayList<>();
+		List<String> tsList = new ArrayList<>();
 		Matcher m = Pattern.compile(reg).matcher(sendGet);
 		while (m.find()) {
 			String info = m.group(0);
 			tsList.add(info.substring(1));
 			System.out.println(info);
-//			String allUrl=baseUrl+"/"+info.substring(1);
-//			HttpRequest.downLoad(allUrl);
+			// String allUrl=baseUrl+"/"+info.substring(1);
+			// HttpRequest.downLoad(allUrl);
 		}
 		return tsList;
 
@@ -344,7 +409,7 @@ public class CrawlerVideo {
 			// System.out.println(m.group(0));
 			info = m.group(0);
 		}
-		 System.out.println(info);
+		System.out.println(info);
 
 		String[] split = info.split("=");
 		List<Term> parseArray = JSON.parseArray("[" + split[1].substring(2, split[1].length() - 1) + "]", Term.class);
