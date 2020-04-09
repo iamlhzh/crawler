@@ -65,6 +65,9 @@ public class CrawlerVideo {
 	// 4个字符的正则表达式
 	private static final String pattern = singlePattern + singlePattern + singlePattern + singlePattern;
 
+	// FFmpeg全路径
+	private static final String FFMPEG_PATH = "E:\\ffmpeg\\bin\\ffmpeg.exe";
+
 	public static void main(String[] args) throws Exception {
 		// String
 		// allUrl="http://jdvodrvfb210d.vod.126.net/jdvodrvfb210d/nos/hls/2019/12/10/1215480494_3fd7d1e4de8248ab99a80fd56fff24e2_sd28.ts";
@@ -164,11 +167,36 @@ public class CrawlerVideo {
 	}
 
 	private static void toDownLoadTs(String baseUrl, List<String> tsList, File toDirectory, String videoName) {
-		// File file=new File(toDirectory,videoName);
+		File file = new File(toDirectory, videoName);
+		StringBuilder sb = new StringBuilder();
+		List<String> params = new ArrayList<String>();
+		sb.append(FFMPEG_PATH);
+		sb.append("-i");
+		params.add(FFMPEG_PATH);
+		params.add(" -i ");
+		sb.append("\"concat:");
+		params.add("concat:");
 		for (String tsStr : tsList) {
 			String allUrl = baseUrl + "/" + tsStr;
 			File tsFile = new File(toDirectory, tsStr);
 			HttpRequest.downLoad(allUrl, tsFile);
+			sb.append(tsFile.getAbsolutePath());
+			sb.append("|");
+			params.add(tsFile.getAbsolutePath() + "|");
+		}
+		params.add("-c");
+		params.add("copy");
+		params.add(file.getAbsolutePath());
+		sb.append("\" -c copy ").append(file.getAbsolutePath());
+		Process p = null;
+		try {
+			ProcessBuilder builder = new ProcessBuilder("E:\\ffmpeg\\bin\\ffmpeg.exe", "-i", "concat:",
+					"C:\\UMESPACE\\workspace\\crawler\\static\\file\\中国民族器乐经典_北京大学_中国大学MOOC(慕课)\\1215480489_63bfcd1d06bc4e0ab627e99b49c3603d_sd0.ts|C:\\UMESPACE\\workspace\\crawler\\static\\file\\中国民族器乐经典_北京大学_中国大学MOOC(慕课)\\1215480489_63bfcd1d06bc4e0ab627e99b49c3603d_sd1.ts|C:\\UMESPACE\\workspace\\crawler\\static\\file\\中国民族器乐经典_北京大学_中国大学MOOC(慕课)\\1215480489_63bfcd1d06bc4e0ab627e99b49c3603d_sd2.ts|",
+					"-c", "copy",
+					"C:\\UMESPACE\\workspace\\crawler\\static\\file\\中国民族器乐经典_北京大学_中国大学MOOC(慕课)\\01中国民族器乐经典第一季-1-开篇与聆听古筝.mp4");
+			p = builder.start();
+		} catch (Exception e) {
+			System.out.println(e.toString());
 		}
 	}
 
@@ -251,7 +279,7 @@ public class CrawlerVideo {
 			// String allUrl=baseUrl+"/"+info.substring(1);
 			// HttpRequest.downLoad(allUrl);
 		}
-		return tsList;
+		return tsList.subList(0, 3);
 
 	}
 
