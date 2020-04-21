@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -60,6 +61,8 @@ public class CrawlerVideo {
     // FFmpeg全路径
     private static final String FFMPEG_PATH = "C:\\ffmpeg-20200403-52523b6-win64-static\\bin\\ffmpeg.exe";
 
+    private static Integer limitNum = 50;
+
     public static void main(String[] args) throws Exception {
         // String
         // allUrl="http://jdvodrvfb210d.vod.126.net/jdvodrvfb210d/nos/hls/2019/12/10/1215480494_3fd7d1e4de8248ab99a80fd56fff24e2_sd28.ts";
@@ -67,7 +70,7 @@ public class CrawlerVideo {
         // if(false) {
         CrawlerVideo cl = new CrawlerVideo();
         // 获取课程ID
-        String url = "https://www.icourse163.org/course/PKU-1207130813";
+        String url = "https://www.icourse163.org/course/PKU-1206423806";
         String html = cl.GetHTML(url);
         System.out.println(html);
         // 获取课程名称
@@ -108,10 +111,11 @@ public class CrawlerVideo {
                 String videoName = parseResult.get("name").toString();
                 List<Video> parseArray = JSON.parseArray(videos.toString(), Video.class);
                 boolean flag = false;
+                List<String> tsList = new ArrayList<>();
+                String baseUrl = null;
                 for (Video video : parseArray) {
-                    String baseUrl = video.getVideoUrl().substring(0, video.getVideoUrl().lastIndexOf("/"));
+                    baseUrl = video.getVideoUrl().substring(0, video.getVideoUrl().lastIndexOf("/"));
                     System.out.println(video.getVideoUrl());
-                    List<String> tsList = new ArrayList<>();
                     if (!flag && video.getQuality() == 1) {
                         flag = true;
                         System.out.println("-----------------------------------------------------------------------------");
@@ -119,6 +123,7 @@ public class CrawlerVideo {
                         // System.out.println(sendGet);
                         System.out.println(baseUrl);
                         tsList = getTsList(sendGet);
+                        break;
                     } else if (!flag && video.getQuality() == 2) {
                         flag = true;
                         System.out.println("-----------------------------------------------------------------------------");
@@ -126,7 +131,7 @@ public class CrawlerVideo {
                         // System.out.println(sendGet);
                         System.out.println(baseUrl);
                         tsList = getTsList(sendGet2);
-
+                        break;
                     } else if (!flag && video.getQuality() == 3) {
                         flag = true;
                         System.out.println("-----------------------------------------------------------------------------");
@@ -134,7 +139,7 @@ public class CrawlerVideo {
                         // System.out.println(sendGet);
                         System.out.println(baseUrl);
                         tsList = getTsList(sendGet3);
-
+                        break;
                     } else if (!flag && video.getQuality() == 4) {
                         flag = true;
                         System.out.println("-----------------------------------------------------------------------------");
@@ -142,10 +147,12 @@ public class CrawlerVideo {
                         // System.out.println(sendGet);
                         System.out.println(baseUrl);
                         tsList = getTsList(sendGet4);
+                        break;
                     }
-                    // 去下载ts文件
-                    toDownLoadTs(baseUrl, tsList, toDirectory, videoName);
+
                 }
+                // 去下载ts文件
+                toDownLoadTs(baseUrl, tsList, toDirectory, videoName);
 
             }
             // }
@@ -155,38 +162,92 @@ public class CrawlerVideo {
 
     private static void toDownLoadTs(String baseUrl, List<String> tsList, File toDirectory, String videoName) {
         File file = new File(toDirectory, videoName);
+        List<String> filePaths = new ArrayList<>();
         StringBuilder sb = new StringBuilder();
-        List<String> params = new ArrayList<String>();
+        sb.append("cmd /c dir ");
         sb.append(FFMPEG_PATH);
         sb.append(" -i ");
-        params.add(FFMPEG_PATH);
-        params.add(" -i ");
         sb.append("\"concat:");
-        params.add("concat:");
         for (String tsStr : tsList) {
             String allUrl = baseUrl + "/" + tsStr;
             File tsFile = new File(toDirectory, tsStr);
             HttpRequest.downLoad(allUrl, tsFile);
             sb.append(tsFile.getAbsolutePath());
+            filePaths.add(tsFile.getAbsolutePath());
             sb.append("|");
-            params.add(tsFile.getAbsolutePath() + "|");
         }
-        params.add("-c");
-        params.add("copy");
-        params.add(file.getAbsolutePath());
-        sb.append("\" -c copy ").append(file.getAbsolutePath());
+        toMergeAllFile(filePaths, toDirectory, videoName);
+        // sb.append("\" -c copy ").append(file.getAbsolutePath());
+        // Process p = null;
+        // try {
+        // p = Runtime.getRuntime().exec(sb.toString());
+        // // ProcessBuilder builder = new ProcessBuilder("E:\\ffmpeg\\bin\\ffmpeg.exe",
+        // // "-i", "concat:",
+        // //
+        // "C:\\UMESPACE\\workspace\\crawler\\static\\file\\中国民族器乐经典_北京大学_中国大学MOOC(慕课)\\1215480489_63bfcd1d06bc4e0ab627e99b49c3603d_sd0.ts|C:\\UMESPACE\\workspace\\crawler\\static\\file\\中国民族器乐经典_北京大学_中国大学MOOC(慕课)\\1215480489_63bfcd1d06bc4e0ab627e99b49c3603d_sd1.ts|C:\\UMESPACE\\workspace\\crawler\\static\\file\\中国民族器乐经典_北京大学_中国大学MOOC(慕课)\\1215480489_63bfcd1d06bc4e0ab627e99b49c3603d_sd2.ts|",
+        // // "-c", "copy",
+        // //
+        // "C:\\UMESPACE\\workspace\\crawler\\static\\file\\中国民族器乐经典_北京大学_中国大学MOOC(慕课)\\01中国民族器乐经典第一季-1-开篇与聆听古筝.mp4");
+        // // p = builder.start();
+        // } catch (Exception e) {
+        // System.out.println(e.toString());
+        // }
+    }
+
+    private static void toMergeAllFile(List<String> filePaths, File toDirectory, String videoName) {
+        if (filePaths.size() <= limitNum) {
+            toCombine(toDirectory, filePaths, videoName);
+        } else {
+            List<String> nowPaths = new ArrayList<>();
+            for (int i = 0; i < filePaths.size(); i = i + limitNum) {
+                List<String> sub = null;
+                if ((i + limitNum) < filePaths.size()) {
+                    sub = filePaths.subList(i, i + limitNum);
+                } else {
+                    sub = filePaths.subList(i, filePaths.size());
+                }
+                String path = toCombine(toDirectory, sub, UUID.randomUUID().toString() + ".ts");
+                nowPaths.add(path);
+            }
+            if (CollectionUtils.isNotEmpty(nowPaths)) {
+                toMergeAllFile(nowPaths, toDirectory, videoName);
+            }
+        }
+
+    }
+
+    private static String toCombine(File toDirectory, List<String> sub, String fileName) {
+        StringBuilder sb = new StringBuilder();
+        File file = new File(toDirectory, fileName);
+        sb.append(FFMPEG_PATH);
+        sb.append(" -loglevel quiet ");
+        sb.append(" -i ");
+        sb.append("\"concat:");
+        for (String tsStr : sub) {
+            sb.append(tsStr);
+            sb.append("|");
+        }
+        sb.append("\" -c copy ").append(file.getAbsolutePath().replace(" ", ""));
         Process p = null;
         try {
             p = Runtime.getRuntime().exec(sb.toString());
-            // ProcessBuilder builder = new ProcessBuilder("E:\\ffmpeg\\bin\\ffmpeg.exe",
-            // "-i", "concat:",
-            // "C:\\UMESPACE\\workspace\\crawler\\static\\file\\中国民族器乐经典_北京大学_中国大学MOOC(慕课)\\1215480489_63bfcd1d06bc4e0ab627e99b49c3603d_sd0.ts|C:\\UMESPACE\\workspace\\crawler\\static\\file\\中国民族器乐经典_北京大学_中国大学MOOC(慕课)\\1215480489_63bfcd1d06bc4e0ab627e99b49c3603d_sd1.ts|C:\\UMESPACE\\workspace\\crawler\\static\\file\\中国民族器乐经典_北京大学_中国大学MOOC(慕课)\\1215480489_63bfcd1d06bc4e0ab627e99b49c3603d_sd2.ts|",
-            // "-c", "copy",
-            // "C:\\UMESPACE\\workspace\\crawler\\static\\file\\中国民族器乐经典_北京大学_中国大学MOOC(慕课)\\01中国民族器乐经典第一季-1-开篇与聆听古筝.mp4");
-            // p = builder.start();
+            p.waitFor();
         } catch (Exception e) {
             System.out.println(e.toString());
+        } finally {
+            if (p == null) {
+                p.destroy();
+            }
+            p = null;
         }
+        for (String tsStr : sub) {
+            File delFile = new File(tsStr);
+            if (delFile.exists()) {
+                boolean delete = delFile.delete();
+                System.out.println(delete);
+            }
+        }
+        return file.getAbsolutePath();
     }
 
     private static void toDownLoadTsAll(String baseUrl, List<String> tsList, File toDirectory, String videoName) {
@@ -278,6 +339,9 @@ public class CrawlerVideo {
         String sendPost = HttpRequest.sendMyPost(url, param);
         // System.out.println(sendPost);
         PostResult parseObject = JSON.parseObject(sendPost, PostResult.class);
+        // if (parseObject.getCode() == 0) {
+        //
+        // }
         // System.out.println(parseObject);
         // System.out.println(parseObject.getResult());
         Result result = JSON.parseObject(parseObject.getResult().toString(), Result.class);
@@ -457,9 +521,6 @@ public class CrawlerVideo {
         int start = html.indexOf("<title>");
         int end = html.indexOf("</title>");
         String title = html.substring(start + 7, end);
-        // 女解说嘤嘤：波多野结衣是对我颜值的认可 - 浮梦第二十期
-        // 女解说嘤嘤："波多野结衣"是对我颜值的认可 - 浮梦第二十期
-        // 精选cosplay:千娇百媚的小黑你爱哪款_现场实拍_游久网DOTA2.UUU9.COM
         return title.replace(":", "").replace("\"", "");
     }
 
