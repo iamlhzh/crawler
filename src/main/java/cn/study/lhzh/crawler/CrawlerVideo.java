@@ -70,7 +70,7 @@ public class CrawlerVideo {
         // if(false) {
         CrawlerVideo cl = new CrawlerVideo();
         // 获取课程ID
-        String url = "https://www.icourse163.org/course/PKU-1206423806";
+        String url = "https://www.icourse163.org/course/PKU-1002534001";
         String html = cl.GetHTML(url);
         System.out.println(html);
         // 获取课程名称
@@ -96,64 +96,67 @@ public class CrawlerVideo {
             bizList.addAll(getBizIdListByTid(term.getId()));
         }
         if (CollectionUtils.isNotEmpty(bizList)) {
-            //
             for (Unit unit : bizList) {
-                VideoSignDto videoSignDto = getVideoSignDtoByUnitId(unit.getId());
-                String videoUrl = "https://vod.study.163.com/eds/api/v1/vod/video";
-                String param = "videoId=" + videoSignDto.getVideoId() + "&signature=" + videoSignDto.getSignature() + "&clientType=1";
-                String sendPost = HttpRequest.sendPost(videoUrl, param);
-                // PostResult postResult=JSON.parseObject(sendPost, PostResult.class);
-                JSONObject parsePostResult = JSON.parseObject(sendPost);
-                Object object = parsePostResult.get("result");
-                JSONObject parseResult = JSON.parseObject(object.toString());
-                Object videos = parseResult.get("videos");
-                System.out.println(parseResult.get("name"));
-                String videoName = parseResult.get("name").toString();
-                List<Video> parseArray = JSON.parseArray(videos.toString(), Video.class);
-                boolean flag = false;
-                List<String> tsList = new ArrayList<>();
-                String baseUrl = null;
-                for (Video video : parseArray) {
-                    baseUrl = video.getVideoUrl().substring(0, video.getVideoUrl().lastIndexOf("/"));
-                    System.out.println(video.getVideoUrl());
-                    if (!flag && video.getQuality() == 1) {
-                        flag = true;
-                        System.out.println("-----------------------------------------------------------------------------");
-                        String sendGet = HttpRequest.sendGet(video.getVideoUrl(), "");
-                        // System.out.println(sendGet);
-                        System.out.println(baseUrl);
-                        tsList = getTsList(sendGet);
-                        break;
-                    } else if (!flag && video.getQuality() == 2) {
-                        flag = true;
-                        System.out.println("-----------------------------------------------------------------------------");
-                        String sendGet2 = HttpRequest.sendGet(video.getVideoUrl(), "");
-                        // System.out.println(sendGet);
-                        System.out.println(baseUrl);
-                        tsList = getTsList(sendGet2);
-                        break;
-                    } else if (!flag && video.getQuality() == 3) {
-                        flag = true;
-                        System.out.println("-----------------------------------------------------------------------------");
-                        String sendGet3 = HttpRequest.sendGet(video.getVideoUrl(), "");
-                        // System.out.println(sendGet);
-                        System.out.println(baseUrl);
-                        tsList = getTsList(sendGet3);
-                        break;
-                    } else if (!flag && video.getQuality() == 4) {
-                        flag = true;
-                        System.out.println("-----------------------------------------------------------------------------");
-                        String sendGet4 = HttpRequest.sendGet(video.getVideoUrl(), "");
-                        // System.out.println(sendGet);
-                        System.out.println(baseUrl);
-                        tsList = getTsList(sendGet4);
-                        break;
+                if ("1".equals(unit.getContentType())) {
+                    VideoSignDto videoSignDto = getVideoSignDtoByUnitId(unit.getId());
+                    if (videoSignDto != null) {
+                        String videoUrl = "https://vod.study.163.com/eds/api/v1/vod/video";
+                        String param = "videoId=" + videoSignDto.getVideoId() + "&signature=" + videoSignDto.getSignature() + "&clientType=1";
+                        String sendPost = HttpRequest.sendPost(videoUrl, param);
+                        System.out.println("返回结果是:" + sendPost);
+                        // PostResult postResult=JSON.parseObject(sendPost, PostResult.class);
+                        JSONObject parsePostResult = JSON.parseObject(sendPost);
+                        Object object = parsePostResult.get("result");
+                        JSONObject parseResult = JSON.parseObject(object.toString());
+                        Object videos = parseResult.get("videos");
+                        System.out.println(parseResult.get("name"));
+                        String videoName = parseResult.get("name").toString();
+                        List<Video> parseArray = JSON.parseArray(videos.toString(), Video.class);
+                        boolean flag = false;
+                        List<String> tsList = new ArrayList<>();
+                        String baseUrl = null;
+                        for (Video video : parseArray) {
+                            baseUrl = video.getVideoUrl().substring(0, video.getVideoUrl().lastIndexOf("/"));
+                            System.out.println(video.getVideoUrl());
+                            if (!flag && video.getQuality() == 1) {
+                                flag = true;
+                                System.out.println("-----------------------------------------------------------------------------");
+                                String sendGet = HttpRequest.sendGet(video.getVideoUrl(), "");
+                                // System.out.println(sendGet);
+                                System.out.println(baseUrl);
+                                tsList = getTsList(sendGet);
+                                break;
+                            } else if (!flag && video.getQuality() == 2) {
+                                flag = true;
+                                System.out.println("-----------------------------------------------------------------------------");
+                                String sendGet2 = HttpRequest.sendGet(video.getVideoUrl(), "");
+                                // System.out.println(sendGet);
+                                System.out.println(baseUrl);
+                                tsList = getTsList(sendGet2);
+                                break;
+                            } else if (!flag && video.getQuality() == 3) {
+                                flag = true;
+                                System.out.println("-----------------------------------------------------------------------------");
+                                String sendGet3 = HttpRequest.sendGet(video.getVideoUrl(), "");
+                                // System.out.println(sendGet);
+                                System.out.println(baseUrl);
+                                tsList = getTsList(sendGet3);
+                                break;
+                            } else if (!flag && video.getQuality() == 4) {
+                                flag = true;
+                                System.out.println("-----------------------------------------------------------------------------");
+                                String sendGet4 = HttpRequest.sendGet(video.getVideoUrl(), "");
+                                // System.out.println(sendGet);
+                                System.out.println(baseUrl);
+                                tsList = getTsList(sendGet4);
+                                break;
+                            }
+
+                        }
+                        // 去下载ts文件
+                        toDownLoadTs(baseUrl, tsList, toDirectory, videoName);
                     }
-
                 }
-                // 去下载ts文件
-                toDownLoadTs(baseUrl, tsList, toDirectory, videoName);
-
             }
             // }
             // }
@@ -219,6 +222,9 @@ public class CrawlerVideo {
     private static String toCombine(File toDirectory, List<String> sub, String fileName) {
         StringBuilder sb = new StringBuilder();
         File file = new File(toDirectory, fileName);
+        if (file.exists()) {
+            file.delete();
+        }
         sb.append(FFMPEG_PATH);
         sb.append(" -loglevel quiet ");
         sb.append(" -i ");
@@ -337,16 +343,21 @@ public class CrawlerVideo {
         String url = "https://www.icourse163.org/web/j/resourceRpcBean.getResourceToken.rpc?csrfKey=b2dc9c47194e4e97a711b7bde5e281b2";
         String param = "bizId=" + id + "&bizType=1&contentType=1";
         String sendPost = HttpRequest.sendMyPost(url, param);
-        // System.out.println(sendPost);
-        PostResult parseObject = JSON.parseObject(sendPost, PostResult.class);
-        // if (parseObject.getCode() == 0) {
-        //
-        // }
-        // System.out.println(parseObject);
-        // System.out.println(parseObject.getResult());
-        Result result = JSON.parseObject(parseObject.getResult().toString(), Result.class);
-        // System.out.println(result.getVideoSignDto().toString());
-        VideoSignDto videoSignDto = result.getVideoSignDto();
+        VideoSignDto videoSignDto = null;
+        if (sendPost != "") {
+            // System.out.println(sendPost);
+            PostResult parseObject = JSON.parseObject(sendPost, PostResult.class);
+            // if (parseObject.getCode() == 0) {
+            //
+            // }
+            System.out.println(parseObject);
+            // System.out.println(parseObject.getResult());
+            if (parseObject.getCode() == 0) {
+                Result result = JSON.parseObject(parseObject.getResult().toString(), Result.class);
+                // System.out.println(result.getVideoSignDto().toString());
+                videoSignDto = result.getVideoSignDto();
+            }
+        }
         return videoSignDto;
     }
 
