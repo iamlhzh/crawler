@@ -104,57 +104,62 @@ public class CrawlerVideo {
                         String param = "videoId=" + videoSignDto.getVideoId() + "&signature=" + videoSignDto.getSignature() + "&clientType=1";
                         String sendPost = HttpRequest.sendPost(videoUrl, param);
                         System.out.println("返回结果是:" + sendPost);
-                        // PostResult postResult=JSON.parseObject(sendPost, PostResult.class);
-                        JSONObject parsePostResult = JSON.parseObject(sendPost);
-                        Object object = parsePostResult.get("result");
-                        JSONObject parseResult = JSON.parseObject(object.toString());
-                        Object videos = parseResult.get("videos");
-                        System.out.println(parseResult.get("name"));
-                        String videoName = parseResult.get("name").toString();
-                        List<Video> parseArray = JSON.parseArray(videos.toString(), Video.class);
-                        boolean flag = false;
-                        List<String> tsList = new ArrayList<>();
-                        String baseUrl = null;
-                        for (Video video : parseArray) {
-                            baseUrl = video.getVideoUrl().substring(0, video.getVideoUrl().lastIndexOf("/"));
-                            System.out.println(video.getVideoUrl());
-                            if (!flag && video.getQuality() == 1) {
-                                flag = true;
-                                System.out.println("-----------------------------------------------------------------------------");
-                                String sendGet = HttpRequest.sendGet(video.getVideoUrl(), "");
-                                // System.out.println(sendGet);
-                                System.out.println(baseUrl);
-                                tsList = getTsList(sendGet);
-                                break;
-                            } else if (!flag && video.getQuality() == 2) {
-                                flag = true;
-                                System.out.println("-----------------------------------------------------------------------------");
-                                String sendGet2 = HttpRequest.sendGet(video.getVideoUrl(), "");
-                                // System.out.println(sendGet);
-                                System.out.println(baseUrl);
-                                tsList = getTsList(sendGet2);
-                                break;
-                            } else if (!flag && video.getQuality() == 3) {
-                                flag = true;
-                                System.out.println("-----------------------------------------------------------------------------");
-                                String sendGet3 = HttpRequest.sendGet(video.getVideoUrl(), "");
-                                // System.out.println(sendGet);
-                                System.out.println(baseUrl);
-                                tsList = getTsList(sendGet3);
-                                break;
-                            } else if (!flag && video.getQuality() == 4) {
-                                flag = true;
-                                System.out.println("-----------------------------------------------------------------------------");
-                                String sendGet4 = HttpRequest.sendGet(video.getVideoUrl(), "");
-                                // System.out.println(sendGet);
-                                System.out.println(baseUrl);
-                                tsList = getTsList(sendGet4);
-                                break;
-                            }
+                        if (!"".equals(sendPost)) {
+                            // PostResult postResult=JSON.parseObject(sendPost, PostResult.class);
+                            JSONObject parsePostResult = JSON.parseObject(sendPost);
+                            Object object = parsePostResult.get("result");
+                            JSONObject parseResult = JSON.parseObject(object.toString());
+                            Object videos = parseResult.get("videos");
+                            System.out.println(parseResult.get("name"));
+                            String videoName = parseResult.get("name").toString();
+                            List<Video> parseArray = JSON.parseArray(videos.toString(), Video.class);
+                            boolean flag = false;
+                            List<String> tsList = new ArrayList<>();
+                            String baseUrl = null;
+                            for (Video video : parseArray) {
+                                baseUrl = video.getVideoUrl().substring(0, video.getVideoUrl().lastIndexOf("/"));
+                                System.out.println(video.getVideoUrl());
+                                if (!flag && video.getQuality() == 1) {
+                                    flag = true;
+                                    System.out.println("-----------------------------------------------------------------------------");
+                                    String sendGet = HttpRequest.sendGet(video.getVideoUrl(), "");
+                                    // System.out.println(sendGet);
+                                    System.out.println(baseUrl);
+                                    tsList = getTsList(sendGet);
+                                    break;
+                                } else if (!flag && video.getQuality() == 2) {
+                                    flag = true;
+                                    System.out.println("-----------------------------------------------------------------------------");
+                                    String sendGet2 = HttpRequest.sendGet(video.getVideoUrl(), "");
+                                    // System.out.println(sendGet);
+                                    System.out.println(baseUrl);
+                                    tsList = getTsList(sendGet2);
+                                    break;
+                                } else if (!flag && video.getQuality() == 3) {
+                                    flag = true;
+                                    System.out.println("-----------------------------------------------------------------------------");
+                                    String sendGet3 = HttpRequest.sendGet(video.getVideoUrl(), "");
+                                    // System.out.println(sendGet);
+                                    System.out.println(baseUrl);
+                                    tsList = getTsList(sendGet3);
+                                    break;
+                                } else if (!flag && video.getQuality() == 4) {
+                                    flag = true;
+                                    System.out.println("-----------------------------------------------------------------------------");
+                                    String sendGet4 = HttpRequest.sendGet(video.getVideoUrl(), "");
+                                    // System.out.println(sendGet);
+                                    System.out.println(baseUrl);
+                                    tsList = getTsList(sendGet4);
+                                    break;
+                                }
 
+                            }
+                            // 去下载ts文件
+                            File file = new File(toDirectory, videoName.replace(" ", ""));
+                            if (!file.exists()) {
+                                toDownLoadTs(baseUrl, tsList, toDirectory, videoName);
+                            }
                         }
-                        // 去下载ts文件
-                        toDownLoadTs(baseUrl, tsList, toDirectory, videoName);
                     }
                 }
             }
@@ -174,10 +179,12 @@ public class CrawlerVideo {
         for (String tsStr : tsList) {
             String allUrl = baseUrl + "/" + tsStr;
             File tsFile = new File(toDirectory, tsStr);
-            HttpRequest.downLoad(allUrl, tsFile);
-            sb.append(tsFile.getAbsolutePath());
-            filePaths.add(tsFile.getAbsolutePath());
-            sb.append("|");
+            if (!tsFile.exists()) {
+                HttpRequest.downLoad(allUrl, tsFile);
+                sb.append(tsFile.getAbsolutePath());
+                filePaths.add(tsFile.getAbsolutePath());
+                sb.append("|");
+            }
         }
         toMergeAllFile(filePaths, toDirectory, videoName);
         // sb.append("\" -c copy ").append(file.getAbsolutePath());
@@ -221,7 +228,7 @@ public class CrawlerVideo {
 
     private static String toCombine(File toDirectory, List<String> sub, String fileName) {
         StringBuilder sb = new StringBuilder();
-        File file = new File(toDirectory, fileName);
+        File file = new File(toDirectory, fileName.replace(" ", ""));
         if (file.exists()) {
             file.delete();
         }
@@ -328,10 +335,11 @@ public class CrawlerVideo {
         String reg = ",[^`]*?\\.ts";
         List<String> tsList = new ArrayList<>();
         Matcher m = Pattern.compile(reg).matcher(sendGet);
+        System.out.println(m.groupCount());
         while (m.find()) {
             String info = m.group(0);
             tsList.add(info.substring(1));
-            System.out.println(info);
+            // System.out.println(info);
             // String allUrl=baseUrl+"/"+info.substring(1);
             // HttpRequest.downLoad(allUrl);
         }
