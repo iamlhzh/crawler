@@ -59,7 +59,7 @@ public class CrawlerVideo {
     private static final String pattern = singlePattern + singlePattern + singlePattern + singlePattern;
 
     // FFmpeg全路径
-    private static final String FFMPEG_PATH = "C:\\ffmpeg-20200403-52523b6-win64-static\\bin\\ffmpeg.exe";
+    private static final String FFMPEG_PATH = "ffmpeg.exe";
 
     private static Integer limitNum = 50;
 
@@ -70,7 +70,7 @@ public class CrawlerVideo {
         // if(false) {
         CrawlerVideo cl = new CrawlerVideo();
         // 获取课程ID
-        String url = "https://www.icourse163.org/course/PKU-1002534001";
+        String url = "https://www.icourse163.org/course/PKU-1003471009";
         String html = cl.GetHTML(url);
         System.out.println(html);
         // 获取课程名称
@@ -309,7 +309,8 @@ public class CrawlerVideo {
         String title = "";
 
         // Pattern pa = Pattern.compile("<title>.*?</title>", Pattern.CANON_EQ);也可以
-        Pattern pa = Pattern.compile("<title>.*?</title>");// 源码中标题正则表达式
+//        Pattern pa = Pattern.compile("<title>.*?</title>");// 源码中标题正则表达式
+        Pattern pa = Pattern.compile("<title>[\\s\\S]*?\n</title>");// 源码中标题正则表达式
         Matcher ma = pa.matcher(htmlSource);
         while (ma.find())// 寻找符合el的字串
         {
@@ -328,7 +329,7 @@ public class CrawlerVideo {
      * @return
      */
     public static String outTag(String s) {
-        return s.replaceAll("<.*?>", "");
+        return s.replaceAll("<.*?>", "").replaceAll("\r|\n", "");
     }
 
     private static List<String> getTsList(String sendGet) {
